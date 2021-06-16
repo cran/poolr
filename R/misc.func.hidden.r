@@ -5,7 +5,10 @@
    if (missing(p))
       stop("Argument 'p' must be specified.", call.=FALSE)
 
-   if (!is.vector(p) || !is.numeric(p))
+   if (is.matrix(p) && nrow(p) == 1)
+      p <- c(p)
+
+   if (!.is.numeric.vector(p))
       stop("Argument 'p' must be a numeric vector.", call.=FALSE)
 
    if (any(is.na(p)))
@@ -14,9 +17,21 @@
    if (any(p < 0) || any(p > 1))
       stop("Values in 'p' vector (i.e., the p-values) must be between 0 and 1.", call.=FALSE)
 
+   return(p)
+
 }
 
-.check.R <- function(R, checksym=TRUE, checkna=TRUE, checkpd=FALSE, checkcor=FALSE, isbase=TRUE, k, adjust, fun) {
+.check.R <- function(R, checksym = TRUE, checkna = TRUE, checkpd = FALSE, nearpd = FALSE, checkcor = FALSE, checkdiag = TRUE, isbase = TRUE, k, adjust, fun) {
+
+   # certain checks imply that other checks must be used
+
+   if (nearpd)
+      checkpd <- TRUE
+
+   if (checkpd) {
+      checkna <- TRUE
+      checksym <- TRUE
+   }
 
    # turn a "dpoMatrix" object (from nearPD()) into a 'plain' matrix (since is.matrix() is FALSE for such objects)
    if (inherits(R, "dpoMatrix"))
@@ -32,17 +47,25 @@
 
    # check if 'R' contains NAs
    if (checkna && any(is.na(R)))
-      stop("Values in 'R' vector must not contain NAs.", call.=FALSE)
+      stop("Values in 'R' must not contain NAs.", call.=FALSE)
 
    # check if 'R' is positive definite; if not, make it
    if (checkpd && any(eigen(R)$values <= 0)) {
-      R <- as.matrix(Matrix::nearPD(R, corr=TRUE)$mat)
-      warning("Matrix 'R' is not positive definite. Used Matrix::nearPD() to make 'R' positive definite.", call.=FALSE)
+      if (nearpd) {
+         warning("Matrix 'R' is not positive definite. Used Matrix::nearPD() to make 'R' positive definite.", call.=FALSE)
+         R <- as.matrix(.find.nonegmat(R))
+      } else {
+         stop("Matrix 'R' is not positive definite.", call.=FALSE)
+      }
    }
 
    # check that all values in R are between -1 and 1
-   if (checkcor && any(abs(R) > 1))
+   if (checkcor && any(abs(R) > 1, na.rm=TRUE))
       stop("Argument 'R' must be a correlation matrix, but contains values outside [-1,1].", call.=FALSE)
+
+   # check that all diagonal values are equal to 1 (and also not missing)
+   if (checkdiag && (any(is.na(diag(R))) || any(diag(R) != 1)))
+      stop("Diagonal values in 'R' must all be equal to 1.", call.=FALSE)
 
    # checks that are relevant only when called from the base functions
 
@@ -54,7 +77,7 @@
 
       # check if user specified 'R' argument but no adjustment method
       if (adjust == "none")
-         warning("Although argument 'R' was specified, no adjustment method was chosen via the 'adjust' argument.\n  To account for dependence, specify an adjustment method. See help(", fun, ") for details.", call.=FALSE)
+         warning("Argument 'R' was specified, but no adjustment method was chosen via the 'adjust' argument.\nTo account for dependence, specify an adjustment method. See help(", fun, ") for details.", call.=FALSE)
 
       # if 'm' has been specified, then warn the user that 'R' matrix is actually ignored
       if (adjust == "user")
@@ -118,6 +141,9 @@
    # check if 'size' is numeric
    if (!is.numeric(size))
      stop("Argument 'size' must be numeric. See help(", call.fun, ").", call.=FALSE)
+
+   # round 'size' value(s) (just in case)
+   size <- round(size)
 
    # check if all values in 'size' are >= 1
    if (any(size < 1))
@@ -206,21 +232,89 @@
 
    }
 
-   return(list(pval = pval, ci = ci))
+   return(list(pval = pval, ci = ci, size = size))
 
 }
 
 ############################################################################
 
-# simplified version of MASS::mvrnorm()
+# simplified versions of MASS::mvrnorm() and mvtnorm::rmvnorm()
 
-.simmvn <- function(n = 1, mu, Sigma) {
-   p <- length(mu)
+.simmvn <- function(n = 1, Sigma, mvnmethod = "mvt_eigen") {
+
+   p <- nrow(Sigma)
    eS <- eigen(Sigma, symmetric = TRUE)
-   ev <- eS$values
-   X <- matrix(rnorm(p * n), n)
-   X <- mu + eS$vectors %*% diag(sqrt(pmax(ev, 0)), p) %*% t(X)
-   t(X)
+   eval <- eS$values
+   evec <- eS$vectors
+
+   X <- matrix(rnorm(p * n), nrow = n, byrow = TRUE)
+
+   if (mvnmethod == "mass_eigen") {
+      return(X %*% diag(sqrt(pmax(eval, 0)), p) %*% t(evec))
+   } else if (mvnmethod == "mvt_eigen") {
+      return(X %*% t(evec %*% (t(evec) * sqrt(pmax(eval, 0)))))
+   }
+
+}
+
+############################################################################
+
+# simplified version of Matrix::nearPD()
+
+.find.nonegmat <- function(R) {
+
+   v <- diag(R)
+   R <- cov2cor(R)
+
+   k <- nrow(R)
+   d_s <- matrix(0, k, k)
+   x <- R
+   iter <- 0
+   converged <- FALSE
+   conv <- Inf
+
+   while (iter < 100 && !converged) {
+      y <- x
+      r <- y - d_s
+      e <- eigen(R, symmetric = TRUE)
+      q <- e$vectors
+      d <- e$values
+      p <- d > 1e-06 * d[1]
+
+      if (!any(p))
+         stop("Matrix seems negative semi-definite")
+
+      q <- q[, p, drop = FALSE]
+      x <- tcrossprod(q * rep(d[p], each = nrow(q)), q)
+      d_s <- x - r
+      diag(x) <- 1
+      conv <- norm(y - x, "I") / norm(y, "I")
+      iter <- iter + 1
+      converged <- (conv <= 1e-07)
+   }
+
+   e <- eigen(x, symmetric = TRUE)
+   d <- e$values
+   eps <- 1e-08 * abs(d[1])
+
+   if (d[k] < eps) {
+      d[d < eps] <- eps
+      q <- e$vectors
+      o.diag <- diag(x)
+      x <- q %*% (d * t(q))
+      d <- sqrt(pmax(eps, o.diag)/diag(x))
+      x[] <- d * x * rep(d, each = k)
+   }
+
+   diag(x) <- 1
+   colnames(x) <- colnames(R)
+   rownames(x) <- rownames(R)
+
+   S <- diag(sqrt(v))
+   R <- S %*% R %*% S
+
+   return(x)
+
 }
 
 ############################################################################
@@ -250,9 +344,14 @@
    1 - (1 - statistic)^k
 }
 
-.binotest <- function(p, k, alpha) {
+.binomtest <- function(p, k, alpha) {
    statistic <- sum(p <= alpha)
    sum(dbinom(statistic:k, k, alpha))
 }
+
+############################################################################
+
+.is.numeric.vector <- function(x)
+   is.atomic(x) && is.numeric(x) && !is.matrix(x) && !is.null(x)
 
 ############################################################################

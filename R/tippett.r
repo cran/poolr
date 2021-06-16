@@ -1,7 +1,7 @@
-tippett <- function(p, adjust = "none", R, m, size = 10000, threshold, side = 2, batchsize, ...) {
+tippett <- function(p, adjust = "none", R, m, size = 10000, threshold, side = 2, batchsize, nearpd = TRUE, ...) {
 
    # checks for 'p' argument
-   .check.p(p)
+   p <- .check.p(p)
 
    k <- length(p)
 
@@ -29,7 +29,7 @@ tippett <- function(p, adjust = "none", R, m, size = 10000, threshold, side = 2,
       R # force evaluation of 'R' argument, so that R=mvnconv(R) works
 
       # checks for 'R' argument
-      R <- .check.R(R, k = k, adjust = adjust, fun = fun)
+      R <- .check.R(R, checksym = TRUE, checkna = TRUE, checkpd = FALSE, nearpd = FALSE, checkcor = FALSE, checkdiag = FALSE, isbase = TRUE, k = k, adjust = adjust, fun = fun)
 
    }
 
@@ -38,6 +38,7 @@ tippett <- function(p, adjust = "none", R, m, size = 10000, threshold, side = 2,
 
    # set some defaults
    ci <- NULL
+   size_used <- NULL
    if (adjust != "user")
       m <- NULL
 
@@ -56,6 +57,8 @@ tippett <- function(p, adjust = "none", R, m, size = 10000, threshold, side = 2,
    }
 
    if (adjust == "empirical") {
+
+      R <- .check.R(R, checksym = FALSE, checkna = FALSE, checkpd = TRUE, nearpd = TRUE, checkcor = FALSE, checkdiag = FALSE, isbase = FALSE)
 
       # setting 'batchsize' to NULL if it is missing
       if (missing(batchsize))
@@ -77,10 +80,11 @@ tippett <- function(p, adjust = "none", R, m, size = 10000, threshold, side = 2,
 
       pval <- tmp$pval
       ci <- tmp$ci
+      size_used <- tmp$size
 
    }
 
-   res <- list(p = c(pval), ci = ci, k = k, m = m, adjust = adjust, statistic = statistic, fun = fun)
+   res <- list(p = c(pval), ci = ci, k = k, m = m, adjust = adjust, statistic = statistic, size = size_used, fun = fun)
 
    class(res) <- "poolr"
    return(res)

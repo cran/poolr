@@ -4,16 +4,16 @@ mvnconv <- function(R, side = 2, target, cov2cor = FALSE) {
    if (missing(R))
       stop("Argument 'R' must be specified.", call.=FALSE)
 
-   # checks for 'R' argument
-   if (is.vector(R)) {
-      R <- .check.R(R, checksym=FALSE, checkna=FALSE, checkpd=FALSE, checkcor=TRUE, isbase=FALSE)
-   } else {
-      R <- .check.R(R, checksym=TRUE, checkna=FALSE, checkpd=FALSE, checkcor=TRUE, isbase=FALSE)
-   }
-
    # get name of calling function (character(0) if called from global environment)
    call.fun <- as.character(sys.call(-1)[1])
    call.fun <- gsub("^poolr::", "", call.fun)
+
+   # checks for 'R' argument
+   if (isTRUE(call.fun %in% c("fisher", "stouffer", "invchisq", "binomtest", "bonferroni", "tippett"))) {
+      R <- .check.R(R, checksym = TRUE, checkna = TRUE, checkpd = FALSE, nearpd = FALSE, checkcor = TRUE, checkdiag = TRUE, isbase = FALSE)
+   } else {
+      R <- .check.R(R, checksym = !is.vector(R), checkna = FALSE, checkpd = FALSE, nearpd = FALSE, checkcor = TRUE, checkdiag = !is.vector(R), isbase = FALSE)
+   }
 
    if (isTRUE(call.fun %in% c("fisher", "stouffer", "invchisq"))) {
 
@@ -43,8 +43,8 @@ mvnconv <- function(R, side = 2, target, cov2cor = FALSE) {
 
    # check for incompatibility between poolr base function and the specified target (only when adjust = "generalized")
 
-   if (length(call.fun) > 0L && call.fun %in% c("fisher", "stouffer", "invchisq")) {
-      # need this in case the 'adjust' argument is abbreviated
+   if (isTRUE(call.fun %in% c("fisher", "stouffer", "invchisq"))) {
+      # figure out what the 'adjust' argument was (this also handles the case where 'adjust' argument is abbreviated)
       call.fun.args <- as.list(match.call(definition = sys.function(-1), call = sys.call(-1), expand.dots = FALSE))
       adjust <- match.arg(call.fun.args$adjust, c("none", "nyholt", "liji", "gao", "galwey", "empirical", "generalized"))
       if (adjust == "generalized" && ((call.fun == "fisher" && target != "m2lp") || (call.fun == "stouffer" && target != "z") || (call.fun == "invchisq" && target != "chisq1")))
@@ -63,11 +63,11 @@ mvnconv <- function(R, side = 2, target, cov2cor = FALSE) {
    if (side == 2)
       column <- column + 1
 
-   # round elements in 'R' to two decimals (since mvnlookup[,1] values are in .01 steps)
-   R <- round(R, 2)
+   # round elements in 'R' to 3 decimals (since mvnlookup[,1] values are in .001 steps)
+   R <- round(R, 3L)
 
-   # replace -1 elements in 'R' with -0.99
-   R[R == -1] <- -0.99
+   # replace elements < -0.99 in 'R' with -0.99
+   R[R < -0.99] <- -0.99
 
    mvnlookup <- get(data(mvnlookup, package="poolr", envir = environment()))
 
@@ -81,18 +81,15 @@ mvnconv <- function(R, side = 2, target, cov2cor = FALSE) {
       covs[lower.tri(covs, diag=TRUE)] <- mvnlookup[match(r, mvnlookup[,1]), column]
       covs[upper.tri(covs)] <- t(covs)[upper.tri(covs)]
 
-      if (cov2cor)
-         covs <- stats::cov2cor(covs)
-
    } else {
 
       covs <- mvnlookup[match(R, mvnlookup[,1]), column]
 
-      if (cov2cor) {
-         var <- mvnlookup[1,column]
-         covs <- covs / var
-      }
+   }
 
+   if (cov2cor) {
+      var <- mvnlookup[1,column]
+      covs <- covs / var
    }
 
    return(covs)

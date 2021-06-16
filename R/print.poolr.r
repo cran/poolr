@@ -12,13 +12,13 @@ print.poolr <- function(x, digits=3, ...) {
       cat("Bonferroni method\n")
    if (x$fun == "tippett")
       cat("Tippett's method\n")
-   if (x$fun == "binotest")
+   if (x$fun == "binomtest")
       cat("binomial test\n")
 
    cat("number of p-values combined:", x$k, "\n")
 
    if (x$fun %in% c("fisher", "invchisq"))
-      testinfo <- paste0("test statistic:              ", round(x$statistic, digits), " ~ chi-square(", round(attr(x$statistic, "df"), digits), ")")
+      testinfo <- paste0("test statistic:              ", round(x$statistic, digits), " ~ chi-square(df = ", round(attr(x$statistic, "df"), digits), ")")
 
    if (x$fun == "stouffer")
       testinfo <- paste0("test statistic:              ", round(x$statistic, digits), " ~ N(0,1)")
@@ -26,11 +26,11 @@ print.poolr <- function(x, digits=3, ...) {
    if (x$fun %in% c("bonferroni", "tippett"))
       testinfo <- paste0("minimum p-value:             ", round(x$statistic, digits))
 
-   if (x$fun == "binotest") {
+   if (x$fun == "binomtest") {
       if (x$adjust %in% c("nyholt", "liji", "gao", "galwey", "user")) {
-         testinfo <- paste0("number of significant tests: ", round(x$statistic * x$m / x$k), " (adjusted based on m)")
+         testinfo <- paste0("number of significant tests: ", round(x$statistic * x$m / x$k), " (adjusted based on m; at alpha = ", x$alpha, ")")
       } else {
-         testinfo <- paste0("number of significant tests: ", x$statistic)
+         testinfo <- paste0("number of significant tests: ", x$statistic, " (at alpha = ", x$alpha, ")")
       }
    }
 
@@ -53,7 +53,8 @@ print.poolr <- function(x, digits=3, ...) {
       if (x$adjust == "user")
          x$adjust <- "user-defined"
 
-      x$adjust <- paste0("effective number of tests (m=", x$m, "; ", x$adjust, ")")
+      x$adjust <- paste0("effective number of tests (m = ", x$m, "; ", x$adjust, ")")
+      x$p <- format.pval(x$p, digits)
 
    }
 
@@ -66,15 +67,19 @@ print.poolr <- function(x, digits=3, ...) {
       if (x$fun == "stouffer")
          x$adjust <- "Strube's method"
 
+      x$p <- format.pval(x$p, digits)
+
+   }
+
+   if (x$adjust == "empirical") {
+
+      x$adjust <- paste0("empirical distribution (size = ", as.integer(x$size), ")")
+      x$p <- paste0(format.pval(x$p, digits), " (95% CI: ", format.pval(x$ci[1], digits), ", ", format.pval(x$ci[2], digits), ")")
+
    }
 
    cat("adjustment:                 ", x$adjust, "\n")
-
-   if (is.null(x$ci)) {
-      cat("combined p-value:           ", format.pval(x$p, digits), "\n")
-   } else {
-      cat("combined p-value:           ", format.pval(x$p, digits), paste0("(95% CI: ", format.pval(x$ci[1], digits), ", ", format.pval(x$ci[2], digits), ")"), "\n")
-   }
+   cat("combined p-value:           ", x$p, "\n")
 
    invisible()
 

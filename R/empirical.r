@@ -5,13 +5,13 @@ empirical <- function(R, method, side = 2, size = 10000, batchsize, ...) {
       stop("Argument 'R' must be specified.", call.=FALSE)
 
    # match 'method' argument
-   method <- match.arg(method, c("fisher", "stouffer", "invchisq", "binotest", "bonferroni", "tippett"))
+   method <- match.arg(method, c("fisher", "stouffer", "invchisq", "binomtest", "bonferroni", "tippett"))
 
    # checks for 'side' argument
    .check.side(side)
 
    # checks for 'R' argument
-   R <- .check.R(R, checkpd=TRUE, checkcor=TRUE, isbase=FALSE)
+   R <- .check.R(R, checksym = TRUE, checkna = TRUE, checkpd = TRUE, nearpd = TRUE, checkcor = TRUE, checkdiag = TRUE, isbase = FALSE)
 
    ddd <- list(...)
 
@@ -54,7 +54,13 @@ empirical <- function(R, method, side = 2, size = 10000, batchsize, ...) {
       if (!is.null(ddd$verbose) && ddd$verbose)
          setTxtProgressBar(pbar, i)
 
-      z <- try(.simmvn(batchsizes[i], mu = mu, Sigma = R))
+      if (is.null(ddd$mvnmethod)) {
+         mvnmethod <- "mvt_eigen"
+      } else {
+         mvnmethod <- ddd$mvnmethod
+      }
+
+      z <- try(.simmvn(batchsizes[i], Sigma = R, mvnmethod = mvnmethod))
 
       if (inherits(z, "try-error"))
          stop("Matrix to be generated is too large. Try setting 'batchsize' (or to a lower number if it was set).", call.=FALSE)

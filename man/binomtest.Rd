@@ -1,10 +1,10 @@
-\name{bonferroni}
-\alias{bonferroni}
-\title{Bonferroni Method}
-\description{Function to carry out the Bonferroni method.\loadmathjax}
+\name{binomtest}
+\alias{binomtest}
+\title{Binomial Test}
+\description{Function to carry out the binomial test.\loadmathjax}
 \usage{
-bonferroni(p, adjust = "none", R, m,
-           size = 10000, threshold, side = 2, batchsize, nearpd = TRUE, \dots)
+binomtest(p, adjust = "none", R, m,
+         size = 10000, threshold, side = 2, batchsize, nearpd = TRUE, \dots)
 }
 \arguments{
    \item{p}{vector of length \mjseqn{k} with the (one- or two-sided) p-values to be combined.}
@@ -20,25 +20,25 @@ bonferroni(p, adjust = "none", R, m,
 }
 \details{
 
-   \bold{Bonferroni Method}
+   \bold{Binomial Test}
 
-   By default (i.e., when \code{adjust = "none"}), the function applies the Bonferroni method to the \mjseqn{p}-values. Letting \mjseqn{p_1, p_2, \ldots, p_k} denote the individual (one- or two-sided) \mjseqn{p}-values of the \mjseqn{k} hypothesis tests to be combined, the combined \mjseqn{p}-value is then computed with \mjdeqn{p_c = \min(1, \min(p_1, p_2, \ldots, p_k) \times k).}{p_c = min(1, min(p_1, p_2, ..., p_k) * k).}
+   By default (i.e., when \code{adjust = "none"}), the function applies the binomial test to the \mjseqn{p}-values (Wilkinson, 1951). Letting \mjseqn{p_1, p_2, \ldots, p_k} denote the individual (one- or two-sided) \mjseqn{p}-values of the \mjseqn{k} hypothesis tests to be combined, the combined \mjseqn{p}-value is then computed with \mjdeqn{p_c = \sum_{x = r}^k {k \choose x} \alpha^x (1 - \alpha)^{k - x}}{p_c = sum_{x=r}^k {k choose x} alpha^x (1 - alpha)^{k - x}} where \mjdeqn{r = \sum_{i = 1}^k I(p_i \le \alpha)}{r = sum_{i=1}^k I(p_i <= alpha)} denotes the number of hypothesis tests that are significant at \mjeqn{\alpha}{alpha}.
 
-   The Bonferroni method does not assume that the \mjseqn{p}-values to be combined are independent. However, if the \mjseqn{p}-values are not independent, the method can become quite conservative (not reject often enough), depending on the dependence structure among the tests. In this case, one can adjust the method to account for such dependence (to bring the Type I error rate closer to some desired nominal significance level).
+   The binomial test assumes that the \mjseqn{p}-values to be combined are independent. If this is not the case, the method can either be conservative (not reject often enough) or liberal (reject too often), depending on the dependence structure among the tests. In this case, one can adjust the method to account for such dependence (to bring the Type I error rate closer to some desired nominal significance level).
 
    \bold{Adjustment Based on the Effective Number of Tests}
 
-   When \code{adjust} is set to \code{"nyholt"}, \code{"liji"}, \code{"gao"} or \code{"galwey"}, the Bonferroni method is adjusted based on an estimate of the effective number of tests (see \code{\link{meff}} for details on these methods for estimating the effective number of tests). In this case, argument \code{R} needs to be set to a matrix that reflects the dependence structure among the tests.
+   When \code{adjust} is set to \code{"nyholt"}, \code{"liji"}, \code{"gao"} or \code{"galwey"}, the binomial test is adjusted based on an estimate of the effective number of tests (see \code{\link{meff}} for details on these methods for estimating the effective number of tests). In this case, argument \code{R} needs to be set to a matrix that reflects the dependence structure among the tests.
 
    There is no general solution for constructing such a matrix, as this depends on the type of test that generated the \mjseqn{p}-values and the sidedness of these tests. If the \mjseqn{p}-values are obtained from tests whose test statistics can be assumed to follow a multivariate normal distribution and a matrix is available that reflects the correlations among the test statistics, then the \code{\link{mvnconv}} function can be used to convert this correlation matrix into the correlations among the (one- or two-sided) \mjseqn{p}-values, which can then be passed to the \code{R} argument. See \sQuote{Examples}.
 
-   Once the effective number of tests, \mjseqn{m}, is estimated based on \code{R} using one of the four methods described above, the combined \mjseqn{p}-value is then computed with \mjdeqn{p_c = \min(1, \min(p_1, p_2, \ldots, p_k) \times m).}{p_c = min(1, min(p_1, p_2, ..., p_k) * m).}
+   Once the effective number of tests, \mjseqn{m}, is estimated based on \code{R} using one of the four methods described above, the combined \mjseqn{p}-value is then computed with \mjdeqn{p_c = \sum_{x = \tilde{r}}^m {m \choose x} \alpha^x (1 - \alpha)^{m - x}}{p_c = sum_{x=r'}^m {m choose x} alpha^x (1 - alpha)^{m - x}} where \mjdeqn{\tilde{r} = \lfloor r \times m / k \rfloor}{r' = floor(r * m / k)} and \mjeqn{\lfloor \cdot \rfloor}{floor(.)} is the floor function.
 
    Alternatively, one can also directly specify the effective number of tests via the \code{m} argument (e.g., if some other method not implemented in the \pkg{poolr} package is used to estimate the effective number of tests). Argument \code{R} is then irrelevant and doesn't need to be specified.
 
    \bold{Adjustment Based on an Empirically-Derived Null Distribution}
 
-   When \code{adjust = "empirical"}, the combined \mjseqn{p}-value is computed based on an empirically-derived null distribution using pseudo replicates (using the \code{\link{empirical}} function). This is appropriate if the test statistics that generated the \mjseqn{p}-values to be combined can be assumed to follow a multivariate normal distribution and a matrix is available that reflects the correlations among the test statistics (which is specified via the \code{R} argument). In this case, test statistics are repeatedly simulated from a multivariate normal distribution under the joint null hypothesis, converted into one- or two-sided \mjseqn{p}-values (depending on the \code{side} argument), and the Bonferroni method is applied. Repeating this process \code{size} times yields a null distribution based on which the combined \mjseqn{p}-value can be computed, or more precisely, estimated, since repeated applications of this method will yield (slightly) different results. To obtain a stable estimate of the combined \mjseqn{p}-value, \code{size} should be set to a large value (the default is \code{10000}, but this can be increased for a more precise estimate). If we consider the combined \mjseqn{p}-value an estimate of the \sQuote{true} combined \mjseqn{p}-value that would be obtained for a null distribution of infinite size, we can also construct a 95\% (pseudo) confidence interval based on a binomial distribution.
+   When \code{adjust = "empirical"}, the combined \mjseqn{p}-value is computed based on an empirically-derived null distribution using pseudo replicates (using the \code{\link{empirical}} function). This is appropriate if the test statistics that generated the \mjseqn{p}-values to be combined can be assumed to follow a multivariate normal distribution and a matrix is available that reflects the correlations among the test statistics (which is specified via the \code{R} argument). In this case, test statistics are repeatedly simulated from a multivariate normal distribution under the joint null hypothesis, converted into one- or two-sided \mjseqn{p}-values (depending on the \code{side} argument), and the binomial test is applied. Repeating this process \code{size} times yields a null distribution based on which the combined \mjseqn{p}-value can be computed, or more precisely, estimated, since repeated applications of this method will yield (slightly) different results. To obtain a stable estimate of the combined \mjseqn{p}-value, \code{size} should be set to a large value (the default is \code{10000}, but this can be increased for a more precise estimate). If we consider the combined \mjseqn{p}-value an estimate of the \sQuote{true} combined \mjseqn{p}-value that would be obtained for a null distribution of infinite size, we can also construct a 95\% (pseudo) confidence interval based on a binomial distribution.
 
    If \code{batchsize} is unspecified, the null distribution is simulated in a single batch, which requires temporarily storing a matrix with dimensions \code{[size,k]}. When \code{size*k} is large, allocating the memory for this matrix might not be possible. Instead, one can specify a \code{batchsize} value, in which case a matrix with dimensions \code{[batchsize,k]} is repeatedly simulated until the desired size of the null distribution has been obtained.
 
@@ -68,9 +68,9 @@ bonferroni(p, adjust = "none", R, m,
    Wolfgang Viechtbauer \email{wvb@wvbauer.com} \cr
 }
 \references{
-   Bland, J. M., & Altman, D. G. (1995). Multiple significance tests: The Bonferroni method. \emph{British Medical Journal, 310}(6973), 170.
-
    Higham, N. J. (2002). Computing the nearest correlation matrix: A problem from finance. \emph{IMA Journal of Numerical Analysis, 22}(3), 329--343.
+
+   Wilkinson, B. (1951). A statistical consideration in psychological research. \emph{Psychological Bulletin, 48}(2), 156--158.
 }
 \examples{
 # copy p-values and LD correlation matrix into p and r
@@ -78,8 +78,8 @@ bonferroni(p, adjust = "none", R, m,
 p <- grid2ip.p
 r <- grid2ip.ld
 
-# apply the Bonferroni method
-bonferroni(p)
+# apply the binomial test
+binomtest(p)
 
 # use mvnconv() to convert the LD correlation matrix into a matrix with the
 # correlations among the (two-sided) p-values assuming that the test
@@ -88,23 +88,23 @@ bonferroni(p)
 mvnconv(r, target = "p", cov2cor = TRUE)[1:5,1:5] # show only rows/columns 1-5
 
 # adjustment based on estimates of the effective number of tests
-bonferroni(p, adjust = "nyholt", R = mvnconv(r, target = "p", cov2cor = TRUE))
-bonferroni(p, adjust = "liji",   R = mvnconv(r, target = "p", cov2cor = TRUE))
-bonferroni(p, adjust = "gao",    R = mvnconv(r, target = "p", cov2cor = TRUE))
-bonferroni(p, adjust = "galwey", R = mvnconv(r, target = "p", cov2cor = TRUE))
+binomtest(p, adjust = "nyholt", R = mvnconv(r, target = "p", cov2cor = TRUE))
+binomtest(p, adjust = "liji",   R = mvnconv(r, target = "p", cov2cor = TRUE))
+binomtest(p, adjust = "gao",    R = mvnconv(r, target = "p", cov2cor = TRUE))
+binomtest(p, adjust = "galwey", R = mvnconv(r, target = "p", cov2cor = TRUE))
 
 # setting argument 'm' manually
-bonferroni(p, m = 12)
+binomtest(p, m = 12)
 
 # adjustment based on an empirically-derived null distribution (setting the
 # seed for reproducibility)
 set.seed(1234)
-bonferroni(p, adjust = "empirical", R = r)
+binomtest(p, adjust = "empirical", R = r)
 
 # generate the empirical distribution in batches of size 100
-bonferroni(p, adjust = "empirical", R = r, batchsize = 100)
+binomtest(p, adjust = "empirical", R = r, batchsize = 100)
 
 # using the stepwise algorithm
-bonferroni(p, adjust = "empirical", R = r, size = c(1000, 10000, 100000), threshold = c(.10, .01))
+binomtest(p, adjust = "empirical", R = r, size = c(1000, 10000, 100000), threshold = c(.10, .01))
 }
 \keyword{htest}

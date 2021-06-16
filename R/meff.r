@@ -10,7 +10,7 @@ meff <- function(R, eigen, method, ...) {
          stop("Argument 'R' must be specified.", call.=FALSE)
 
       # checks for 'R' argument
-      R <- .check.R(R, checkcor=TRUE, isbase=FALSE)
+      R <- .check.R(R, checksym = TRUE, checkna = TRUE, checkpd = FALSE, nearpd = FALSE, checkcor = TRUE, checkdiag = TRUE, isbase = FALSE)
 
       # get eigenvalues of 'R' matrix
       evs <- base::eigen(R)$values
@@ -19,12 +19,16 @@ meff <- function(R, eigen, method, ...) {
 
       # can pass eigenvalues directly to function via 'eigen'
 
-      if (!is.vector(eigen) || !is.numeric(eigen))
+      if (!.is.numeric.vector(eigen))
          stop("Argument 'eigen' must be a numeric vector.", call.=FALSE)
 
       evs <- eigen
 
    }
+
+   # check if there are negative eigenvalues
+   if (any(evs < 0))
+      warning(paste0("One or more eigenvalues ", ifelse(missing(eigen), "derived from the 'R' matrix ", ""), "are negative."), call.=FALSE)
 
    if (method == "nyholt") {
 
@@ -65,8 +69,13 @@ meff <- function(R, eigen, method, ...) {
 
    if (method == "galwey") {
 
+      # if there are negative eigenvalues, inform user that they were set to 0
+      if (any(evs < 0)) {
+         warning(paste0("Negative eigenvalues ", ifelse(missing(eigen), "derived from the 'R' matrix ", ""), "were set to 0."), call.=FALSE)
+         evs[evs < 0] <- 0
+      }
+
       # effective number of tests (based on Galwey, 2009)
-      evs[evs < 0] <- 0
       m <- sum(sqrt(evs))^2 / sum(evs)
 
    }
