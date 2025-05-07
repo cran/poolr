@@ -1,6 +1,6 @@
 Package: poolr
-Version: 1.1-1
-Date: 2022-01-26
+Version: 1.2-0
+Date: 2025-05-01
 Title: Methods for Pooling P-Values from (Dependent) Tests
 Authors@R: c(person("Ozan", "Cinar", email = "ozancinar86@gmail.com", role = c("aut","cre"), comment = c(ORCID = "0000-0003-0329-1977")), person("Wolfgang", "Viechtbauer", email = "wvb@wvbauer.com", role = "aut", comment = c(ORCID = "0000-0003-3463-4063")))
 Depends: R (>= 3.5.0)
@@ -12,10 +12,12 @@ License: GPL (>= 2)
 ByteCompile: TRUE
 LazyData: TRUE
 Encoding: UTF-8
+BuildManual: TRUE
 NeedsCompilation: no
-Packaged: 2022-01-26 16:02:16 UTC; ozan
-Author: Ozan Cinar [aut, cre] (<https://orcid.org/0000-0003-0329-1977>),
-  Wolfgang Viechtbauer [aut] (<https://orcid.org/0000-0003-3463-4063>)
+Packaged: 2025-05-07 13:17:38 UTC; ozan
+Author: Ozan Cinar [aut, cre] (ORCID: <https://orcid.org/0000-0003-0329-1977>),
+  Wolfgang Viechtbauer [aut] (ORCID:
+    <https://orcid.org/0000-0003-3463-4063>)
 Maintainer: Ozan Cinar <ozancinar86@gmail.com>
 Repository: CRAN
-Date/Publication: 2022-01-26 16:42:42 UTC
+Date/Publication: 2025-05-07 16:50:01 UTC

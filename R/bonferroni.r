@@ -6,7 +6,7 @@ bonferroni <- function(p, adjust = "none", R, m, size = 10000, threshold, side =
    k <- length(p)
 
    # match 'adjust' argument
-   adjust <- match.arg(adjust, c("none", "nyholt", "liji", "gao", "galwey", "empirical"))
+   adjust <- match.arg(adjust, c("none", "nyholt", "liji", "gao", "galwey", "chen", "empirical"))
 
    # if m is specified, apply effective number of test adjustment with user-defined m
    if (!missing(m))
@@ -21,7 +21,7 @@ bonferroni <- function(p, adjust = "none", R, m, size = 10000, threshold, side =
    if (missing(R)) {
 
       # check if 'R' is specified when using an adjustment method (does not apply to "user")
-      if (adjust %in% c("nyholt", "liji", "gao", "galwey", "empirical", "generalized"))
+      if (adjust %in% c("nyholt", "liji", "gao", "galwey", "chen", "empirical", "generalized"))
          stop("Argument 'R' must be specified when using an adjustment method.")
 
    } else {
@@ -48,7 +48,7 @@ bonferroni <- function(p, adjust = "none", R, m, size = 10000, threshold, side =
 
    }
 
-   if (adjust %in% c("nyholt", "liji", "gao", "galwey", "user")) {
+   if (adjust %in% c("nyholt", "liji", "gao", "galwey", "chen", "user")) {
 
       m <- .check.m(R = R, adjust = adjust, m = m, k = k, ...)
 
@@ -72,7 +72,8 @@ bonferroni <- function(p, adjust = "none", R, m, size = 10000, threshold, side =
       emp.setup <- .check.emp.setup(size = size, threshold = threshold, ddd = ddd)
 
       # observed pooled p-value
-      pval.obs <- min(1, statistic * k)
+      #pval.obs <- min(1, statistic * k)
+      pval.obs <- statistic * k
 
       # get empirically derived p-value
       tmp <- .do.emp(pval.obs = pval.obs, emp.setup = emp.setup, ddd = ddd,
